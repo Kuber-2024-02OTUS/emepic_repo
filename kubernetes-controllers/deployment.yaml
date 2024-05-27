@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  controllers-pod
+  namespace: homework
+  labels:
+    app: webapp
+spec:
+  selector:
+    matchLabels:
+      app: webapp
+  replicas: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      nodeSelector:
+        homework: "true"
+      initContainers:
+      - name: init-container
+        image: busybox:stable
+        command:
+        - wget
+        - "-O"
+        - "/init/index.html"
+        - https://ya.ru
+        volumeMounts:
+        - name: intro-workdir
+          mountPath: "/init"
+      dnsPolicy: Default
+      containers:
+      - name: nginx-container 
+        image: nginx:stable
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: intro-workdir
+          mountPath: /homework
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","rm /homework/index.html"]
+        readinessProbe:
+         exec:
+          command:
+          - cat
+          - /homework/index.html
+      volumes:
+      - name: intro-workdir
+        emptyDir: {}
+      restartPolicy: Always
