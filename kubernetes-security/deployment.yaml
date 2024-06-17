@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controllers-pod
+  namespace: homework
+  labels:
+    app: webapp
+spec:
+  selector:
+    matchLabels:
+      app: webapp
+  replicas: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      serviceAccountName: monitoring
+      nodeSelector:
+        homework: "true"
+      initContainers:
+      - name: init-container
+        image: busybox:stable
+        command:
+        - wget
+        - "-O"
+        - "/init/index.html"
+        - http://example.com
+        volumeMounts:
+        - name: intro-workdir
+          mountPath: "/init"
+      - name: metrics-init-container
+        image: busybox:stable
+        command:
+        - wget
+        - "--no-check-certificate"
+        - "--header"
+        - "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjRreElEdWo4SmROVVpkaXJzVzRZZFlrNnQ2eV92YjlEV0ljTkwtcjF6WUEifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNzE4NjE4MzQ1LCJpYXQiOjE3MTg2MTQ3NDUsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJob21ld29yayIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJtb25pdG9yaW5nIiwidWlkIjoiYTVjYTQ2ZGYtOTRhZC00YThmLWI4MmItZDhmZDVhOWU4NGQ1In19LCJuYmYiOjE3MTg2MTQ3NDUsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpob21ld29yazptb25pdG9yaW5nIn0.XOA1V926NzOKCHsCVGo6t340LaM29PviQ3P4Dp8y2FXy_wA28yiomFwttJcwc1ujgCLerrQksLf0qlJaWUDgpGn4-BUcFMgEFDXUf7ubHXhbFZvFn4JB0u-7rTup7I9B_Tn2YRvB0BLza-SJ-yihGY2Syy2_eY7GpsA8mf3RsFfzgIX_L07xVDU6jppE_ME3iXQtOM_9dQe3Z3Y-PzLAdCndNUnKzXrzSOd2KwMLHAApJpayN__MUpMrGqqSsh-DDqDgnuvjnPrJHj-J5GtpGqkAB5kfq6Pb5qNIX8kpUKyf-6tf3ZxqUoiJJlZ39XFMlN9oY1xKc1bANUwdAP9_zA"
+        - "-O"
+        - "/init/metrics.html"
+        - https://10.96.0.1/metrics
+        volumeMounts:
+        - name: intro-workdir
+          mountPath: "/init"
+      dnsPolicy: Default
+      containers:
+      - name: nginx-container 
+        image: nginx:stable
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: intro-workdir
+          mountPath: /usr/share/nginx/html
+        - name: conf-volume
+          mountPath: /usr/share/nginx/html/conf
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","rm /homework/index.html"]
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+      volumes:
+      - name: intro-workdir
+        persistentVolumeClaim:
+          claimName: pvchw4
+      - name: conf-volume
+        configMap:
+          name: cmhw4
