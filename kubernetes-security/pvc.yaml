@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvchw4
+  namespace: homework
+  labels:
+    app: pvchw4
+spec:
+  storageClassName: "otushw4"
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
